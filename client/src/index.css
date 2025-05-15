@@ -45,3 +45,93 @@ body {
   color: #fff;
   text-decoration: none;
 }
+
+.response-box {
+  padding: 1rem;
+  background-color: white;
+  border-radius: 10px;
+  text-align: left;
+  color: black;
+  margin: 0 auto;
+  max-width: 90%;
+  line-height: 1.6;
+}
+
+.sql-line {
+    white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  font-family: monospace;
+  font-size: 14px;
+  color: black;
+  background-color: #f0f0f0;
+  padding: 10px;
+  border-radius: 6px;
+  margin-top: 5px;
+}
+
+.explanation {
+  text-align: justify;
+  margin-top: 1rem;
+}
+
+/* Responsive styles for mobile and tablets */
+@media (max-width: 768px) {
+  /* Container shrinks and padding reduced */
+  .container {
+    padding: 20px !important;
+    margin-top: 20px !important;
+    border-radius: 20px !important;
+    border: none !important;
+    width: 95% !important;
+    box-sizing: border-box;
+  }
+
+  /* Logo smaller */
+  .logo {
+    width: 12rem !important;
+  }
+
+  /* Chat box stacks vertically */
+  .chatBox {
+    flex-direction: column !important;
+    gap: 15px !important;
+  }
+
+  /* Input takes full width */
+  input[type="text"] {
+    width: 100% !important;
+    height: 45px !important;
+  }
+
+  /* Buttons take full width and smaller */
+  .ask-btn, .other-btn {
+    width: 100% !important;
+    padding: 12px !important;
+    font-size: 14px !important;
+  }
+
+  /* Response box font smaller and width full */
+  .response-box {
+    width: 100% !important;
+    font-size: 14px !important;
+    padding: 15px !important;
+  }
+
+  /* Ensure text wraps nicely */
+  .sql-line {
+    white-space: normal !important;
+    word-wrap: break-word !important;
+  }
+
+  /* Adjust titles and headings font sizes */
+  .title {
+    font-size: 1.3rem !important;
+  }
+
+  /* Keep strong tags from breaking layout */
+  strong {
+    display: inline-block;
+    margin-bottom: 0.25rem;
+  }
+}

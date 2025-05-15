@@ -1,7 +1,6 @@
 import { useState } from "react";
 import "./App.css";
 
-
 function App() {
   const [question, setQuestion] = useState("");
   const [response, setResponse] = useState("");
@@ -18,28 +17,55 @@ function App() {
     setResponse(data.answer);
   };
 
+  // Split response into SQL and Explanation parts safely
+  const [sqlPart, explanationPart] = response
+    ? response.split("Explanation:")
+    : ["", ""];
+
   return (
-    <div style={styles.container}>
-      <img src="../assets/logo.png" alt="" style={styles.logo} />
+    <div className="container" style={styles.container}>
+      <img
+        src="../assets/logo.png"
+        alt=""
+        className="logo"
+        style={styles.logo}
+      />
       <h1 className="title">Hello, What can I help you with?</h1>
 
-      <div style={styles.chatBox}>
+      <div className="chatBox" style={styles.chatBox}>
         <input
           type="text"
-          placeholder="Ask a business question..."
+          placeholder="How much did each customer spend overall?......"
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
+          className="input"
           style={styles.input}
         />
-        <button onClick={handleSubmit} style={styles.button} className="ask-btn">
+        <button
+          onClick={handleSubmit}
+          style={styles.button}
+          className="ask-btn"
+        >
           Ask
         </button>
       </div>
-
-      <div style={styles.response}>
-        <h3>Answer:</h3>
-        <p>{response || "Your result will appear here..."}</p>
-      </div>
+      {response && (
+        <div className="response-box" style={styles.response}>
+          <h3>Answer:</h3>
+          <div style={{ textAlign: "justify", color: "black" }}>
+            <p>
+              <strong>SQL: </strong>
+              <pre className="sql-line">
+                {sqlPart.replace("SQL:", "").trim()}
+              </pre>
+            </p>
+            <p style={{ marginTop: 15, textAlign: "justify" }}>
+              <strong>Explanation: </strong>
+              {explanationPart?.trim()}
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -53,7 +79,7 @@ const styles = {
     borderRadius: "40px",
     marginTop: 50,
   },
-  logo:{
+  logo: {
     width: "20rem",
     height: "auto",
   },
@@ -69,10 +95,10 @@ const styles = {
     height: "50px",
     padding: 10,
     fontSize: "16px",
-    borderRadius : "20px",
-    border:"2px solid white",
+    borderRadius: "20px",
+    border: "2px solid white",
     backgroundColor: "transparent",
-    color:"#ffff",
+    color: "#ffff",
   },
   button: {
     padding: "10px 20px",
