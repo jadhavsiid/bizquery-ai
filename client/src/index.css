@@ -1,0 +1,47 @@
+body {
+  margin: 0;
+  background-color: #22223b;
+}
+/* styles.css or a CSS module */
+.title {
+  color: #4b0082;
+  background-image: linear-gradient(
+    45deg,
+    #4b0082,
+    #8f00ff,
+    #d400ff,
+    #ff00c8,
+    #ff1493
+  );
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.ask-btn {
+  background-image: linear-gradient(
+    to right,
+    #da22ff 0%,
+    #9733ee 51%,
+    #da22ff 100%
+  );
+}
+.ask-btn {
+  margin: 10px;
+  width: 9rem;
+  padding: 15px 45px;
+  text-align: center;
+  text-transform: uppercase;
+  transition: 0.5s;
+  background-size: 200% auto;
+  color: white;
+  /* box-shadow: 0 0 20px #eee; */
+  border-radius: 10px;
+  display: block;
+  border: none;
+}
+
+.ask-btn:hover {
+  background-position: right center; /* change the direction of the change here */
+  color: #fff;
+  text-decoration: none;
+}
