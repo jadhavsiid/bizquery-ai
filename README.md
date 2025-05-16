@@ -1,2 +1,4 @@
-# bizquery-ai
-"BizQuery AI" – An AI Analyst for Business Insights that can answer complex business queries in natural language, backed by SQL analysis and charts.
+## 📐 Architecture Overview
+> See full [Architecture Docs](docs/architecture.md)
+
+BizQuery AI is a full-stack app using React + Express + SQLite + OpenRouter GenAI APIs. It answers vague business questions using prompt-to-SQL translation and visualizes answers via charts.
