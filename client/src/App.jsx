@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import "./App.css";
 
 import {
@@ -12,6 +12,7 @@ function App() {
   const [question, setQuestion] = useState("");
   const [response, setResponse] = useState(null);
   const [loading, setLoading] = useState(false);
+  const resultRef = useRef(null);
 
   const handleSubmit = async () => {
     if (!question.trim()) return;
@@ -34,25 +35,40 @@ function App() {
     }
   };
 
+  useEffect(() => {
+    if (response && !response.error && resultRef.current) {
+      resultRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [response]);
+
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter") handleSubmit();
+  };
+
   const sqlPart = response?.sql || "";
   const explanationPart = response?.explanation || "";
   const resultData = Array.isArray(response?.rows) ? response.rows : [];
 
   let chartType = null;
-
   if (resultData.length > 0) {
     const keys = Object.keys(resultData[0]);
     if (keys.length === 2) {
       const [x, y] = keys;
       if (typeof resultData[0][x] === "string" && typeof resultData[0][y] === "number") {
         chartType = "bar";
-      } else if (typeof resultData[0][x] === "number" && typeof resultData[0][y] === "string") {
-        chartType = "bar";
       } else if (typeof resultData[0][x] === "number" && typeof resultData[0][y] === "number") {
         chartType = "line";
       }
     }
   }
+
+  const sampleQuestions = [
+    "Which product category caused most refunds in Q3?",
+    "Did increased marketing spend increase revenue?",
+    "Which region has the worst profit margin?",
+    "Which region saw the highest sales in 2024?",
+    "Where is sales-to-cost ratio lowest?",
+  ];
 
   return (
     <div className="container" style={styles.container}>
@@ -65,6 +81,7 @@ function App() {
           placeholder="How much did each customer spend overall?......"
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
+          onKeyDown={handleKeyDown}
           className="input"
           style={styles.input}
           disabled={loading}
@@ -75,7 +92,7 @@ function App() {
           className="ask-btn"
           disabled={loading}
         >
-          ASK
+          {loading ? "Thinking..." : "ASK"}
         </button>
         {loading && <div className="spinner" style={styles.spinner} />}
       </div>
@@ -83,13 +100,7 @@ function App() {
       <div style={styles.samples}>
         <h3>Try Sample Questions:</h3>
         <div style={styles.sampleList}>
-          {[
-            "Which product category caused most refunds in Q3?",
-            "Did increased marketing spend increase revenue?",
-            "Which region has the worst profit margin?",
-            "What’s the churn rate across customer age groups?",
-            "Where is sales-to-cost ratio lowest?",
-          ].map((sampleQ, idx) => (
+          {sampleQuestions.map((sampleQ, idx) => (
             <button
               key={idx}
               style={styles.sampleBtn}
@@ -104,7 +115,7 @@ function App() {
       </div>
 
       {response && !response.error && (
-        <div className="response-box" style={styles.response}>
+        <div ref={resultRef} className="response-box" style={styles.response}>
           <h3>SQL Query:</h3>
           <pre className="sql-line">{sqlPart}</pre>
 
@@ -113,11 +124,11 @@ function App() {
 
           <h3>Result:</h3>
 
-          {chartType && resultData.length > 0 && (
+          {chartType && resultData.length > 0 ? (
             <div style={{ marginBottom: "2rem" }}>
               <h3>Chart:</h3>
               <ResponsiveContainer width="100%" height={300}>
-                {chartType === "bar" && (
+                {chartType === "bar" ? (
                   <BarChart data={resultData}>
                     <XAxis dataKey={Object.keys(resultData[0])[0]} />
                     <YAxis />
@@ -125,8 +136,7 @@ function App() {
                     <Legend />
                     <Bar dataKey={Object.keys(resultData[0])[1]} fill="#8884d8" />
                   </BarChart>
-                )}
-                {chartType === "line" && (
+                ) : (
                   <LineChart data={resultData}>
                     <XAxis dataKey={Object.keys(resultData[0])[0]} />
                     <YAxis />
@@ -137,6 +147,8 @@ function App() {
                 )}
               </ResponsiveContainer>
             </div>
+          ) : (
+            <p style={{ fontStyle: "italic" }}>Chart unavailable for this result.</p>
           )}
 
           {resultData.length > 0 ? (
@@ -163,6 +175,9 @@ function App() {
           ) : (
             <p>No results found.</p>
           )}
+          <button style={styles.clearBtn} onClick={() => { setResponse(null); setQuestion(""); }}>
+            Clear
+          </button>
         </div>
       )}
 
@@ -189,9 +204,8 @@ const styles = {
     padding: 40,
     fontFamily: "Arial",
     textAlign: "center",
-    border: "1px solid white",
-    borderRadius: "40px",
     marginTop: 50,
+    color: "#fff",
   },
   logo: {
     width: "20rem",
@@ -199,7 +213,7 @@ const styles = {
   },
   chatBox: {
     display: "flex",
-    alignItems: "center", // ✅ aligns input, button, spinner
+    alignItems: "center",
     justifyContent: "center",
     gap: "10px",
     marginTop: 20,
@@ -238,7 +252,6 @@ const styles = {
     maxWidth: 900,
     marginLeft: "auto",
     marginRight: "auto",
-    color: "white",
   },
   sampleList: {
     display: "flex",
@@ -263,6 +276,7 @@ const styles = {
   response: {
     marginTop: 30,
     backgroundColor: "#f4f4f4",
+    color: "#000",
     padding: 20,
     borderRadius: "10px",
   },
@@ -292,6 +306,7 @@ const styles = {
     fontWeight: "bold",
   },
   clearBtn: {
+    marginTop: 20,
     marginLeft: 10,
     cursor: "pointer",
     borderRadius: "5px",
