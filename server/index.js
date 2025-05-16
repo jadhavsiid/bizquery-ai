@@ -1,18 +1,18 @@
 require("dotenv").config();
-console.log("OpenRouter API Key Loaded:", process.env.OPENROUTER_API_KEY ? "YES" : "NO")
 const express = require("express");
 const cors = require("cors");
+const fetch = (...args) => import("node-fetch").then(({ default: fetch }) => fetch(...args));
+const { runQuery } = require("./db");
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-// 🧪 Test Route
+// Health check
 app.get("/api/test", (req, res) => {
   res.json({ message: "Server is working! 🔥" });
 });
 
-// 🤖 GenAI Route with OpenRouter
 app.post("/api/ask", async (req, res) => {
   const { question } = req.body;
   console.log("Received question:", question);
@@ -21,17 +21,22 @@ app.post("/api/ask", async (req, res) => {
 You are a business analyst and SQL expert.
 
 Given the following schema:
-- sales(id, cust_id, amt, dt)
+- sales(id, col_1, xx23, "123sales", date)
 - customers(id, name, regn)
-- products(id, cat, cost)
+- products(id, name, price)
 
 Answer this vague business question by generating a SQL query and explaining the result in plain English.
 
 Question: "${question}"
 
 Respond like:
-SQL: ...
-Explanation: ...
+SQL:
+\`\`\`
+-- SQL goes here
+\`\`\`
+
+Explanation:
+-- Your explanation goes here
 `;
 
   try {
@@ -51,25 +56,48 @@ Explanation: ...
 
     const data = await response.json();
 
-    console.log("🧠 Full OpenRouter response:");
-    console.dir(data, { depth: null });
-
-    let answer = "No response received.";
-    if (data.choices && data.choices[0]?.message?.content) {
-      answer = data.choices[0].message.content;
-    } else if (data.error) {
-      answer = `OpenRouter Error: ${data.error.message}`;
+    if (!data.choices || !data.choices[0]?.message?.content) {
+      return res.status(500).json({ error: data.error?.message || "No response from AI" });
     }
 
-    res.json({ answer });
+    const answer = data.choices[0].message.content;
+    console.log("AI raw answer:\n", answer);
+
+    const sqlMatch = answer.match(/SQL:\s*```(?:sql)?\s*([\s\S]*?)```/i);
+    const explanationMatch = answer.match(/Explanation:\s*([\s\S]*)/i);
+    let sql = sqlMatch ? sqlMatch[1].trim() : "";
+    const explanation = explanationMatch ? explanationMatch[1].trim() : "";
+
+    if (!sql) {
+      return res.status(400).json({ error: "Could not parse SQL from AI response.", raw: answer });
+    }
+
+    // Replace schema mismatches (AI may assume "amt" and "dt")
+    sql = sql
+      .replace(/\bs\.amt\b/g, "s.xx23")
+      .replace(/\bs\.dt\b/g, "s.date")
+      .replace(/\bamt\b/g, "xx23")
+      .replace(/\bdt\b/g, "date");
+
+    // Inject proper date validation
+    if (sql.includes("WHERE")) {
+      sql = sql.replace(/WHERE/i, "WHERE date GLOB '????-??-??' AND");
+    }
+
+    console.log("Modified SQL:", sql);
+
+    try {
+      const rows = await runQuery(sql);
+      res.json({ sql, explanation, result: rows });
+    } catch (dbErr) {
+      console.error("DB Error:", dbErr);
+      res.status(500).json({ sql, explanation, result: [], error: dbErr.message });
+    }
   } catch (err) {
-    console.error("🚨 Exception while calling OpenRouter:", err.message || err);
-    res.status(500).send("AI Error");
+    console.error("AI Request Error:", err);
+    res.status(500).json({ error: "AI Service Error" });
   }
 });
 
-// 🚀 Start Server
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-});
+app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));

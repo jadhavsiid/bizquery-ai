@@ -74,6 +74,21 @@ body {
   text-align: justify;
   margin-top: 1rem;
 }
+.spinner {
+  border: 4px solid rgba(255, 255, 255, 0.3);
+  border-top: 4px solid #8e2de2; /* purple-ish */
+  border-radius: 50%;
+  width: 25px;
+  height: 25px;
+  animation: spin 1s linear infinite;
+  margin-left: 15px;
+  display: inline-block;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
 
 /* Responsive styles for mobile and tablets */
 @media (max-width: 768px) {
