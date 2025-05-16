@@ -9,7 +9,11 @@ const app = express();
 const PORT = 5000;
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: ['https://bizquery-ai.vercel.app'], // Your frontend domain
+  methods: ['GET', 'POST'],
+  credentials: true
+}));
 app.use(express.json());
 
 // SQLite DB setup
