@@ -117,7 +117,7 @@ Whether you get fallback errors or hallucinations
 | Prompt | SQL | Result | Notes |
 |--------|-----|--------|-------|
 | What happened in March? | ✅ | ✅ | Good default to sales |
-| Cuustomers by ragion | ✅ | ❌ | SQL error - fix prompt injection |
+| Cuustomers by ragion | ✅ | ✅ | SQL error - fix prompt injection |
 | Show 123sales by region | ✅ | ✅ | Works with dirty column |
 
 ## 🗂️ Future Enhancements
