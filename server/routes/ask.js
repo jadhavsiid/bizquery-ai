@@ -1,60 +1,39 @@
+// === ask.js ===
 const express = require("express");
 const router = express.Router();
 
-const db = require("../db");
+const db = require("../db/queryRunner");
 const { generatePrompt } = require("../utils/promptTemplate");
 const callOpenRouter = require("../services/openRouter");
 const sendError = require("../utils/errorHandler");
+const sanitizeQuestion = require("../middleware/sanitize");
 
-// Basic sanitization
-function sanitizeQuestion(question) {
-  if (typeof question !== "string") return "";
-  question = question.trim();
-  if (question.length > 300) return "";
-  const unsafeChars = /[`"'\\;]/g;
-  return question.replace(unsafeChars, "");
-}
-
-router.post("/ask", async (req, res) => {
-  let { question } = req.body;
+router.post("/ask", sanitizeQuestion, async (req, res) => {
+  const { question } = req.body;
   console.log("📥 Received question:", question);
 
-  question = sanitizeQuestion(question);
+  const prompt = generatePrompt(question);
+  console.log("🧠 Generated prompt:", prompt);
 
-  if (!question) {
-    return sendError(res, "Invalid or too long question.", 400);
+  let answer;
+  try {
+    answer = await callOpenRouter(prompt);
+    console.log("🤖 Raw AI response:", answer);
+  } catch (err) {
+    console.error("💥 Error while calling OpenRouter:", err);
+    return sendError(res, "AI service error. Try again later.");
   }
 
-  const prompt = generatePrompt(question);
-  console.log("📤 Generated Prompt:\n", prompt);
-
+  let sql, explanation;
   try {
-    console.log("⏳ Sending prompt to OpenRouter...");
-    const answer = await callOpenRouter(prompt);
-    console.log("🤖 AI Raw Answer:", answer);
+    const parsed = JSON.parse(answer);
+    sql = parsed.sql?.trim();
+    explanation = parsed.explanation?.trim();
 
-    let sql = "", explanation = "";
+    if (!sql) return sendError(res, "AI did not return SQL.", 400);
 
-    // Try parsing JSON response from AI
-    try {
-      const parsed = JSON.parse(answer);
-      sql = parsed.sql?.trim();
-      explanation = parsed.explanation?.trim();
-
-      if (!sql) {
-        return sendError(res, "AI returned no SQL.", 400);
-      }
-    } catch (parseErr) {
-      console.error("❌ JSON Parse Error:", parseErr);
-      return res.status(500).json({
-        success: false,
-        error: "AI response not in JSON format.",
-        raw: answer
-      });
-    }
-
-    // Add fallback date filter if not present
-    if (!/date\s*(=|>=|<=|>|<|GLOB|LIKE)/i.test(sql)) {
+    // Inject date condition if missing
+    if (!/date\s+(=|>=|<=|>|<|GLOB|LIKE)/i.test(sql)) {
       if (/WHERE/i.test(sql)) {
         sql = sql.replace(/WHERE/i, "WHERE date GLOB '????-??-??' AND");
       } else if (/(GROUP BY|ORDER BY|LIMIT)/i.test(sql)) {
@@ -64,15 +43,19 @@ router.post("/ask", async (req, res) => {
       }
     }
 
-    console.log("✅ Final SQL:", sql);
+    console.log("📄 SQL from AI:", sql);
+    console.log("📘 Explanation from AI:", explanation);
+  } catch (parseErr) {
+    console.error("❌ JSON Parse Error:", parseErr);
+    return res.status(500).json({ success: false, error: "AI response not in valid JSON.", raw: answer });
+  }
 
-    // Execute SQL
+  try {
     const rows = await db.runQuery(sql);
     return res.json({ success: true, sql, explanation, rows });
-
-  } catch (err) {
-    console.error("💥 AI Service/DB Error:", err);
-    return sendError(res, "Something went wrong on the server.", 500);
+  } catch (dbErr) {
+    console.error("🧨 Database query failed:", dbErr);
+    return sendError(res, dbErr.message || "Database error.");
   }
 });
 
