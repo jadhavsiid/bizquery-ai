@@ -78,7 +78,7 @@ function App() {
       <div className="chatBox" style={styles.chatBox}>
         <input
           type="text"
-          placeholder="How much did each customer spend overall?......"
+          placeholder="Type your Question here..."
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
           onKeyDown={handleKeyDown}
