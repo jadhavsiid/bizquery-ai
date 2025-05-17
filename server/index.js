@@ -3,47 +3,12 @@ const cors = require("cors");
 const dotenv = require("dotenv");
 const { generatePrompt } = require("./utils/promptTemplate");
 const sqlite3 = require("sqlite3").verbose();
+const fetch = require("node-fetch");
 
 dotenv.config();
 
 const app = express();
 const PORT = 5000;
-
-// Middleware
-app.use(cors({
-  origin: ['https://bizquery-ai.vercel.app'],
-  methods: ['GET', 'POST'],
-  credentials: true
-}));
-app.use(express.json());
-
-// Routes
-const askRoute = require("./routes/ask");
-app.use("/api", askRoute);
-
-// Start server
-app.listen(PORT, () => {
-  console.log(`🚀 Server running at http://localhost:${PORT}`);
-});
-
-
-function sanitizeQuestion(question) {
-  if (typeof question !== "string") return "";
-
-  // Trim whitespace
-  question = question.trim();
-
-  // Limit length
-  if (question.length > 300) {
-    return "";
-  }
-
-  // Basic sanitization – remove problematic characters
-  const unsafeChars = /[`"'\\;]/g;
-  question = question.replace(unsafeChars, "");
-
-  return question;
-}
 
 // Middleware
 app.use(
@@ -58,11 +23,21 @@ app.use(express.json());
 // SQLite DB setup
 const db = new sqlite3.Database("./db/bizquery.db", (err) => {
   if (err) {
-    console.error("Error connecting to SQLite:", err.message);
+    console.error("❌ Error connecting to SQLite:", err.message);
   } else {
-    console.log("Connected to SQLite database.");
+    console.log("✅ Connected to SQLite database.");
   }
 });
+
+function sanitizeQuestion(question) {
+  if (typeof question !== "string") return "";
+  question = question.trim();
+  if (question.length > 300) return "";
+
+  // Remove unsafe characters
+  const unsafeChars = /[`"'\\;]/g;
+  return question.replace(unsafeChars, "");
+}
 
 function runQuery(sql) {
   return new Promise((resolve, reject) => {
@@ -73,60 +48,33 @@ function runQuery(sql) {
   });
 }
 
-function buildPrompt(question) {
-  return `
-You are a business analyst and SQL expert.
-
-Schema:
-- products(id INTEGER, name TEXT, price REAL)
-- customers(id INTEGER, name TEXT, email TEXT, regn TEXT, age INTEGER, status TEXT, last_transaction_date TEXT)
-- regions(id INTEGER, name TEXT, manager TEXT)
-- sales(id INTEGER, customer_id INTEGER, product_id INTEGER, xx23 REAL, "123sales" REAL, date TEXT)
-
-Generate a SQL query for:
-"${question}"
-
-Respond like:
-SQL:
-\`\`\`sql
--- SQL query
-\`\`\`
-
-Explanation:
--- Explanation
-  `;
-}
-
 app.post("/api/ask", async (req, res) => {
   let { question } = req.body;
   question = sanitizeQuestion(question);
 
-  if (!question || typeof question !== "string" || question.length > 300) {
+  if (!question) {
     return res
       .status(400)
       .json({ success: false, error: "Invalid or too long question." });
   }
 
   const prompt = generatePrompt(question);
-  console.log("Prompt:", prompt);
+  console.log("📥 Prompt:", prompt);
 
   try {
-    const response = await fetch(
-      "https://openrouter.ai/api/v1/chat/completions",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
-          "Content-Type": "application/json",
-          "HTTP-Referer": "https://bizquery-ai.vercel.app",
-          "X-Title": "bizquery-ai",
-        },
-        body: JSON.stringify({
-          model: "openai/gpt-3.5-turbo",
-          messages: [{ role: "user", content: prompt }],
-        }),
-      }
-    );
+    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+        "Content-Type": "application/json",
+        "HTTP-Referer": "https://bizquery-ai.vercel.app",
+        "X-Title": "bizquery-ai",
+      },
+      body: JSON.stringify({
+        model: "openai/gpt-3.5-turbo",
+        messages: [{ role: "user", content: prompt }],
+      }),
+    });
 
     const data = await response.json();
 
@@ -138,31 +86,30 @@ app.post("/api/ask", async (req, res) => {
 
     const answer = data.choices[0].message.content;
 
-   let sql = "", explanation = "";
+    let sql = "", explanation = "";
 
-try {
-  const parsed = JSON.parse(answer);
-  sql = parsed.sql?.trim();
-  explanation = parsed.explanation?.trim();
+    try {
+      const parsed = JSON.parse(answer);
+      sql = parsed.sql?.trim();
+      explanation = parsed.explanation?.trim();
 
-  if (!sql) {
-    return res.status(400).json({
-      success: false,
-      error: "AI returned an invalid SQL field.",
-      raw: answer,
-    });
-  }
-} catch (parseErr) {
-  console.error("❌ JSON Parsing Error:", parseErr);
-  return res.status(500).json({
-    success: false,
-    error: "Could not parse JSON from AI response.",
-    raw: answer,
-  });
-}
+      if (!sql) {
+        return res.status(400).json({
+          success: false,
+          error: "AI returned an invalid SQL field.",
+          raw: answer,
+        });
+      }
+    } catch (parseErr) {
+      console.error("❌ JSON Parsing Error:", parseErr);
+      return res.status(500).json({
+        success: false,
+        error: "Could not parse JSON from AI response.",
+        raw: answer,
+      });
+    }
 
-
-    // Add a default date filter if not present
+    // Add date filter if missing
     if (!/date\s+(=|>=|<=|>|<|GLOB|LIKE)/i.test(sql)) {
       if (/WHERE/i.test(sql)) {
         sql = sql.replace(/WHERE/i, "WHERE date GLOB '????-??-??' AND");
@@ -179,12 +126,12 @@ try {
     const rows = await runQuery(sql);
     res.json({ success: true, sql, explanation, rows });
   } catch (err) {
-    console.error("💥 Error:", err.message);
+    console.error("💥 Full Error:", err);
     res.status(500).json({ success: false, error: "Server error. Try again." });
   }
 });
 
-// Server start
+// Start server once
 app.listen(PORT, () => {
   console.log(`🚀 Server running at http://localhost:${PORT}`);
 });
