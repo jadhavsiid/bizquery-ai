@@ -72,7 +72,7 @@ function App() {
 
   return (
     <div className="container" style={styles.container}>
-      <img src="../assets/logo.png" alt="BizQuery AI Logo" className="logo" style={styles.logo} />
+      <img src="/assets/logo.png" alt="BizQuery AI Logo" className="logo" style={styles.logo} />
       <h1 className="title" style={{ color: "#db00ff" }}>Hello, What can I help you with?</h1>
 
       <div className="chatBox" style={styles.chatBox}>
