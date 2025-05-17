@@ -24,6 +24,9 @@ app.get("/health", (req, res) => {
   res.send({ status: "ok" });
 });
 
+const errorBoundary = require("./middleware/errorBoundary");
+app.use(errorBoundary);
+
 // Start server
 app.listen(PORT, () => {
   if (process.env.NODE_ENV !== 'production') {
