@@ -6,20 +6,29 @@ const callOpenRouter = require("../services/openRouter");
 const sendError = require("../utils/errorHandler");
 
 const askHandler = async (req, res) => {
-  const { question } = req.body;
+  const { question, model } = req.body;
   logger.log("📥 Received question:", question);
+
+  if (!question) {
+    return sendError(res, "Question is required.", 400);
+  }
 
   const prompt = generatePrompt(question);
   logger.log("🧠 Generated prompt:", prompt);
 
   let answer;
   try {
-    logger.log("🔁 Calling OpenRouter API...");
-    answer = await callOpenRouter(prompt);
+    const chosenModel = model || "openai/gpt-3.5-turbo";
+    logger.log("🔁 Calling OpenRouter API with model:", chosenModel);
+
+    answer = await callOpenRouter(prompt, chosenModel);
     logger.log("🤖 Raw AI response:", answer);
   } catch (err) {
     logger.error("💥 Error while calling OpenRouter:", err);
-    return sendError(res, "AI service error. Try again later.");
+    return res.status(503).json({
+      success: false,
+      error: "Oops! Our AI is a bit overwhelmed right now. Please try again in a moment.",
+    });
   }
 
   let sql, explanation;
@@ -32,12 +41,10 @@ const askHandler = async (req, res) => {
       return sendError(res, "AI did not return SQL.", 400);
     }
 
-    // Only allow SELECT queries
     if (!sql.toLowerCase().startsWith("select")) {
       return sendError(res, "Only SELECT queries are allowed.", 400);
     }
 
-    // Inject dummy date filter if missing (fallback logic)
     if (!/date\s+(=|>=|<=|>|<|GLOB|LIKE)/i.test(sql)) {
       if (/WHERE/i.test(sql)) {
         sql = sql.replace(/WHERE/i, "WHERE date GLOB '????-??-??' AND");
@@ -57,8 +64,8 @@ const askHandler = async (req, res) => {
       error: "AI response not in valid JSON.",
       details: {
         rawResponse: answer,
-        parseError: parseErr.message
-      }
+        parseError: parseErr.message,
+      },
     });
   }
 
@@ -70,11 +77,11 @@ const askHandler = async (req, res) => {
     return res.status(500).json({
       success: false,
       error: "Database error.",
-        details: {
-          sql,
-          dbError: dbErr.message,
-          stack: dbErr.stack  // Optional: remove in production
-          }
+      details: {
+        sql,
+        dbError: dbErr.message,
+        stack: dbErr.stack,
+      },
     });
   }
 };

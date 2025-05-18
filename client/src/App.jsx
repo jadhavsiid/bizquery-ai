@@ -12,8 +12,10 @@ function App() {
   const [question, setQuestion] = useState("");
   const [response, setResponse] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [selectedModel, setSelectedModel] = useState("openai/gpt-4"); // Default model
   const resultRef = useRef(null);
 
+  // Handle submit with model selection & auto-switch logic
   const handleSubmit = async () => {
     if (!question.trim()) return;
 
@@ -21,10 +23,19 @@ function App() {
     setResponse(null);
 
     try {
+      // Auto-switch logic: If question is long, switch to advanced model
+      let modelToUse = selectedModel;
+      if (question.length > 100) {
+        modelToUse = "openai/gpt-4-advanced";
+      }
+
       const res = await fetch("http://localhost:5000/api/ask", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question }),
+        body: JSON.stringify({
+          question,
+          model: modelToUse,
+        }),
       });
       const data = await res.json();
       setResponse(data);
@@ -75,6 +86,25 @@ function App() {
       <img src="/assets/logo.png" alt="BizQuery AI Logo" className="logo" style={styles.logo} />
       <h1 className="title" style={{ color: "#db00ff" }}>Hello, What can I help you with?</h1>
 
+      {/* Model Selection Dropdown */}
+      <div style={{ marginBottom: "1rem" }}>
+        <label htmlFor="modelSelect" style={{ marginRight: 10, fontWeight: "600", color: "#fff" }}>
+          Select Model:
+        </label>
+        <select
+          id="modelSelect"
+          value={selectedModel}
+          onChange={(e) => setSelectedModel(e.target.value)}
+          style={{ padding: "8px", borderRadius: "5px", fontSize: "16px" }}
+          disabled={loading}
+        >
+          <option value="openai/gpt-4">Default (GPT-4)</option>
+          <option value="openai/gpt-4-advanced">Advanced GPT-4</option>
+          <option value="openai/gpt-3.5-turbo">GPT-3.5 Turbo</option>
+          {/* Add more model options here */}
+        </select>
+      </div>
+
       <div className="chatBox" style={styles.chatBox}>
         <input
           type="text"
@@ -107,6 +137,7 @@ function App() {
               onClick={() => setQuestion(sampleQ)}
               onMouseEnter={(e) => (e.target.style.backgroundColor = "#483d8b")}
               onMouseLeave={(e) => (e.target.style.backgroundColor = "#6a5acd")}
+              disabled={loading}
             >
               {sampleQ}
             </button>
