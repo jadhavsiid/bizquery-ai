@@ -1,4 +1,3 @@
-// === index.js ===
 const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
@@ -11,7 +10,7 @@ const PORT = process.env.PORT || 5000;
 
 // Middleware
 app.use(cors({
-  origin: ["https://bizquery-ai.vercel.app"],
+  origin: ["https://bizquery-ai.vercel.app", "http://localhost:3000", "http://localhost:5173"],
   methods: ["GET", "POST"],
   credentials: true,
 }));

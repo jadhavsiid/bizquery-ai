@@ -1,21 +1,27 @@
 import { useState, useEffect, useRef } from "react";
 import "./App.css";
-
 import {
-  BarChart, Bar,
-  LineChart, Line,
-  PieChart, Pie, Cell,
-  XAxis, YAxis, Tooltip, Legend, ResponsiveContainer
-} from 'recharts';
+  BarChart,
+  Bar,
+  LineChart,
+  Line,
+  PieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from "recharts";
 
 function App() {
   const [question, setQuestion] = useState("");
   const [response, setResponse] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [selectedModel, setSelectedModel] = useState("openai/gpt-4"); // Default model
+  const [selectedModel, setSelectedModel] = useState("openai/gpt-4");
   const resultRef = useRef(null);
 
-  // Handle submit with model selection & auto-switch logic
   const handleSubmit = async () => {
     if (!question.trim()) return;
 
@@ -23,24 +29,39 @@ function App() {
     setResponse(null);
 
     try {
-      // Auto-switch logic: If question is long, switch to advanced model
-      let modelToUse = selectedModel;
-      if (question.length > 100) {
-        modelToUse = "openai/gpt-4-advanced";
-      }
+      const modelToUse =
+        question.length > 100 ? "openai/gpt-4-advanced" : selectedModel;
 
       const res = await fetch("http://localhost:5000/api/ask", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${import.meta.env.VITE_APP_API_KEY}`
+        },
         body: JSON.stringify({
           question,
           model: modelToUse,
         }),
       });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || `HTTP error! status: ${res.status}`);
+      }
+
       const data = await res.json();
+
+      if (!data.sql || !data.explanation) {
+        throw new Error("Invalid response format from server");
+      }
+
       setResponse(data);
     } catch (err) {
-      setResponse({ error: err.message || "Unknown error" });
+      setResponse({
+        error: err.message.includes("fetch")
+          ? "Failed to connect to server. Check your network connection."
+          : err.message,
+      });
     } finally {
       setLoading(false);
     }
@@ -65,9 +86,15 @@ function App() {
     const keys = Object.keys(resultData[0]);
     if (keys.length === 2) {
       const [x, y] = keys;
-      if (typeof resultData[0][x] === "string" && typeof resultData[0][y] === "number") {
+      if (
+        typeof resultData[0][x] === "string" &&
+        typeof resultData[0][y] === "number"
+      ) {
         chartType = "bar";
-      } else if (typeof resultData[0][x] === "number" && typeof resultData[0][y] === "number") {
+      } else if (
+        typeof resultData[0][x] === "number" &&
+        typeof resultData[0][y] === "number"
+      ) {
         chartType = "line";
       }
     }
@@ -83,25 +110,34 @@ function App() {
 
   return (
     <div className="container" style={styles.container}>
-      <img src="/assets/logo.png" alt="BizQuery AI Logo" className="logo" style={styles.logo} />
-      <h1 className="title" style={{ color: "#db00ff" }}>Hello, What can I help you with?</h1>
+      <img
+        src="/assets/logo.png"
+        alt="BizQuery AI Logo"
+        className="logo"
+        style={styles.logo}
+      />
+      <h1 className="title" style={{ color: "#db00ff" }}>
+        Hello, What can I help you with?
+      </h1>
 
       {/* Model Selection Dropdown */}
       <div style={{ marginBottom: "1rem" }}>
-        <label htmlFor="modelSelect" style={{ marginRight: 10, fontWeight: "600", color: "#fff" }}>
+        <label
+          htmlFor="modelSelect"
+          style={{ marginRight: 10, fontWeight: "600", color: "#fff" }}
+        >
           Select Model:
         </label>
         <select
           id="modelSelect"
           value={selectedModel}
           onChange={(e) => setSelectedModel(e.target.value)}
-          style={{ padding: "8px", borderRadius: "5px", fontSize: "16px" }}
+          style={{ padding: "5px", borderRadius: "5px", fontSize: "16px", backgroundColor: "transparent", color: "#fff", border: "1px solid white" }}
           disabled={loading}
         >
           <option value="openai/gpt-4">Default (GPT-4)</option>
           <option value="openai/gpt-4-advanced">Advanced GPT-4</option>
           <option value="openai/gpt-3.5-turbo">GPT-3.5 Turbo</option>
-          {/* Add more model options here */}
         </select>
       </div>
 
@@ -165,7 +201,10 @@ function App() {
                     <YAxis />
                     <Tooltip />
                     <Legend />
-                    <Bar dataKey={Object.keys(resultData[0])[1]} fill="#8884d8" />
+                    <Bar
+                      dataKey={Object.keys(resultData[0])[1]}
+                      fill="#8884d8"
+                    />
                   </BarChart>
                 ) : (
                   <LineChart data={resultData}>
@@ -173,13 +212,19 @@ function App() {
                     <YAxis />
                     <Tooltip />
                     <Legend />
-                    <Line type="monotone" dataKey={Object.keys(resultData[0])[1]} stroke="#8884d8" />
+                    <Line
+                      type="monotone"
+                      dataKey={Object.keys(resultData[0])[1]}
+                      stroke="#8884d8"
+                    />
                   </LineChart>
                 )}
               </ResponsiveContainer>
             </div>
           ) : (
-            <p style={{ fontStyle: "italic" }}>Chart unavailable for this result.</p>
+            <p style={{ fontStyle: "italic" }}>
+              Chart unavailable for this result.
+            </p>
           )}
 
           {resultData.length > 0 ? (
@@ -187,7 +232,9 @@ function App() {
               <thead>
                 <tr>
                   {Object.keys(resultData[0]).map((col) => (
-                    <th key={col} style={styles.th}>{col}</th>
+                    <th key={col} style={styles.th}>
+                      {col}
+                    </th>
                   ))}
                 </tr>
               </thead>
@@ -206,7 +253,13 @@ function App() {
           ) : (
             <p>No results found.</p>
           )}
-          <button style={styles.clearBtn} onClick={() => { setResponse(null); setQuestion(""); }}>
+          <button
+            style={styles.clearBtn}
+            onClick={() => {
+              setResponse(null);
+              setQuestion("");
+            }}
+          >
             Clear
           </button>
         </div>
@@ -228,7 +281,7 @@ function App() {
       )}
     </div>
   );
-}
+} // Closing brace for App component added here
 
 const styles = {
   container: {
@@ -345,7 +398,7 @@ const styles = {
     border: "none",
     background: "#a94442",
     color: "white",
-  }
+  },
 };
 
 export default App;
