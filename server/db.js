@@ -1,6 +1,6 @@
 const sqlite3 = require("sqlite3").verbose();
 
-const db = new sqlite3.Database("./db/bizquery.db", (err) => {
+const db = new sqlite3.Database("./bizquery.db", (err) => {
   if (err) {
     console.error("Error connecting to SQLite:", err.message);
   } else {

@@ -1,10 +1,13 @@
 // routes/ask.js
 const express = require("express");
 const router = express.Router();
+const { runQuery } = require("../db");
+
 
 // POST request handler for /api/ask
 router.post("/", async (req, res, next) => {
   try {
+    // Example database query
     const { question, model } = req.body;
 
     // Validate request
@@ -99,6 +102,18 @@ router.post("/", async (req, res, next) => {
     });
   } catch (error) {
     next(error);
+  }
+  try {
+    // Example database query
+    const results = await runQuery("SELECT * FROM some_table WHERE condition = 'value'");
+    
+    // Use the results in your response
+    res.json({ 
+      message: "Query successful", 
+      data: results 
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
 });
 

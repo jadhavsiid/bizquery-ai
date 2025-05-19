@@ -2,6 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
 const rateLimit = require("express-rate-limit");
+const { runQuery } = require("./db"); // Import the database modul
 
 dotenv.config();
 
@@ -37,7 +38,14 @@ app.get("/health", (req, res) => {
 // Global error handler middleware
 const errorBoundary = require("./middleware/errorBoundary");
 app.use(errorBoundary);
-
+app.get("/api/data", async (req, res) => {
+  try {
+    const data = await runQuery("SELECT * FROM your_table_name");
+    res.json(data);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 // Start server
 app.listen(PORT, () => {
   if (process.env.NODE_ENV !== "production") {
